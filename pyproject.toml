@@ -1,0 +1,19 @@
+[project]
+name = "task-management"
+version = "0.1.0"
+description = "AI-based planning app scaffold"
+authors = [{name = "Task Management"}]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pandas",
+    "pydantic",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
