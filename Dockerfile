@@ -7,7 +7,7 @@ WORKDIR /app
 
 COPY pyproject.toml ./
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir fastapi "uvicorn[standard]" pandas pydantic
+    && pip install --no-cache-dir fastapi "uvicorn[standard]" pandas pydantic google-generativeai
 
 COPY src ./src
 
