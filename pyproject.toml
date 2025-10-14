@@ -9,6 +9,7 @@ dependencies = [
     "uvicorn[standard]",
     "pandas",
     "pydantic",
+    "google-generativeai",
 ]
 
 [tool.setuptools.packages.find]
