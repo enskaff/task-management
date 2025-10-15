@@ -1,11 +1,19 @@
 """FastAPI application entrypoint."""
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.pmo_agent.llm_client import generate_response
 
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+
 app = FastAPI(title="Task Management PMO Agent")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 class LLMRequest(BaseModel):
@@ -39,3 +47,10 @@ def call_llm(payload: LLMRequest) -> LLMResponse:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return LLMResponse(response=text)
+
+
+@app.get("/chat")
+def get_chat_page() -> FileResponse:
+    """Serve the minimal chat UI for interacting with the LLM endpoint."""
+
+    return FileResponse(STATIC_DIR / "chat.html")
