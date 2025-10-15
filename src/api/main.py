@@ -3,7 +3,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from pmo_agent.llm_client import generate_response
+from src.pmo_agent.llm_client import generate_response
 
 app = FastAPI(title="Task Management PMO Agent")
 
