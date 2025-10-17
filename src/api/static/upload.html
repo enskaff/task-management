@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memory Upload</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 1.5rem; background: #f8fafc; color: #0f172a; }
+    h1 { font-size: 1.8rem; margin-bottom: 1rem; }
+    section { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1); margin-bottom: 1rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+    input[type="file"], textarea { width: 100%; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid #cbd5f5; font-size: 1rem; }
+    textarea { min-height: 120px; resize: vertical; }
+    button { background: #2563eb; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.4rem; cursor: pointer; font-size: 1rem; margin-top: 0.5rem; }
+    button.secondary { background: #ef4444; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    ul { list-style: none; padding-left: 0; }
+    li { padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0; }
+    .status { margin-top: 0.5rem; font-size: 0.95rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+    th, td { border: 1px solid #e2e8f0; padding: 0.4rem; text-align: left; font-size: 0.9rem; }
+    th { background: #f1f5f9; }
+    @media (max-width: 600px) {
+      body { margin: 1rem; }
+      section { padding: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Upload documents & manage memory</h1>
+
+  <section>
+    <h2>Upload a file</h2>
+    <form id="upload-form">
+      <label for="file-input">Choose a file (.txt, .md, .csv, .docx, up to 1 MB)</label>
+      <input id="file-input" type="file" accept=".txt,.md,.csv,.docx" required />
+      <button type="submit">Upload &amp; Add to Memory</button>
+      <div id="upload-status" class="status"></div>
+    </form>
+    <div id="csv-preview" style="display:none;">
+      <h3>CSV Preview (first 50 rows)</h3>
+      <div id="csv-table"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Add note to memory</h2>
+    <label for="note-input">Note content</label>
+    <textarea id="note-input" placeholder="Enter a short note..."></textarea>
+    <button id="save-note">Save note</button>
+    <div id="note-status" class="status"></div>
+  </section>
+
+  <section>
+    <h2>Memory items</h2>
+    <button id="reset-memory" class="secondary">Reset memory</button>
+    <div id="reset-status" class="status"></div>
+    <ul id="memory-list"></ul>
+  </section>
+
+  <script>
+    const uploadForm = document.getElementById('upload-form');
+    const uploadStatus = document.getElementById('upload-status');
+    const csvPreviewContainer = document.getElementById('csv-preview');
+    const csvTableContainer = document.getElementById('csv-table');
+    const noteInput = document.getElementById('note-input');
+    const saveNoteButton = document.getElementById('save-note');
+    const noteStatus = document.getElementById('note-status');
+    const memoryList = document.getElementById('memory-list');
+    const resetButton = document.getElementById('reset-memory');
+    const resetStatus = document.getElementById('reset-status');
+
+    async function refreshMemory() {
+      try {
+        const res = await fetch('/memory');
+        if (!res.ok) throw new Error('Failed to load memory.');
+        const data = await res.json();
+        memoryList.innerHTML = '';
+        (data.items || []).forEach(item => {
+          const li = document.createElement('li');
+          li.innerHTML = `<strong>${item.label}</strong>: ${item.preview ?? ''}`;
+          memoryList.appendChild(li);
+        });
+      } catch (err) {
+        memoryList.innerHTML = '<li>Unable to load memory.</li>';
+        console.error(err);
+      }
+    }
+
+    function renderCsvPreview(preview) {
+      if (!preview) {
+        csvPreviewContainer.style.display = 'none';
+        csvTableContainer.innerHTML = '';
+        return;
+      }
+      csvPreviewContainer.style.display = 'block';
+      const columns = preview.columns || [];
+      const rows = preview.rows || [];
+      const headerRow = `<tr>${columns.map(col => `<th>${col}</th>`).join('')}</tr>`;
+      const bodyRows = rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('');
+      csvTableContainer.innerHTML = `<table>${headerRow}${bodyRows}</table>`;
+    }
+
+    uploadForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      uploadStatus.textContent = 'Uploading...';
+      const fileInput = document.getElementById('file-input');
+      if (!fileInput.files.length) {
+        uploadStatus.textContent = 'Please choose a file first.';
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed.');
+        uploadStatus.textContent = `Stored ${data.stored_label} (${data.chars_stored} chars).`;
+        renderCsvPreview(data.csv_preview);
+        fileInput.value = '';
+        await refreshMemory();
+      } catch (err) {
+        uploadStatus.textContent = err.message;
+        renderCsvPreview(null);
+        console.error(err);
+      }
+    });
+
+    saveNoteButton.addEventListener('click', async () => {
+      const content = noteInput.value.trim();
+      if (!content) {
+        noteStatus.textContent = 'Please enter a note before saving.';
+        return;
+      }
+      noteStatus.textContent = 'Saving...';
+      try {
+        const res = await fetch('/memory/add_text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: 'note:user', content })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save note.');
+        noteStatus.textContent = 'Note saved.';
+        noteInput.value = '';
+        await refreshMemory();
+      } catch (err) {
+        noteStatus.textContent = err.message;
+        console.error(err);
+      }
+    });
+
+    resetButton.addEventListener('click', async () => {
+      resetStatus.textContent = 'Resetting...';
+      try {
+        const res = await fetch('/memory/reset', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to reset memory.');
+        resetStatus.textContent = 'Memory cleared.';
+        csvPreviewContainer.style.display = 'none';
+        csvTableContainer.innerHTML = '';
+        await refreshMemory();
+      } catch (err) {
+        resetStatus.textContent = err.message;
+        console.error(err);
+      }
+    });
+
+    refreshMemory();
+  </script>
+</body>
+</html>
