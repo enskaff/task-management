@@ -92,6 +92,26 @@ curl -X POST http://127.0.0.1:8000/llm \
 # {"response": "...model output..."}
 ```
 
+## Upload UI & in-memory context
+
+- Visit [`/upload-ui`](http://127.0.0.1:8000/upload-ui) to access a minimal browser interface for uploading files, adding notes, previewing CSVs (first 50 rows), and resetting memory.
+- Upload text sources directly to the `/upload` endpoint. Supported extensions are `.txt`, `.md`, `.csv`, and `.docx` with a maximum size of **1 MB**:
+
+  ```bash
+  curl -X POST http://127.0.0.1:8000/upload \
+    -H "Content-Type: multipart/form-data" \
+    -F "file=@notes.csv"
+  ```
+
+  CSV uploads return the extracted rows in the `csv_preview` field so you can quickly verify the ingested data.
+- Manage memory entries through the API:
+
+  - `GET /memory` – list stored items with labels and previews.
+  - `POST /memory/add_text` – add ad-hoc notes using `{ "label": "note:user", "content": "..." }` (content up to 10k characters).
+  - `POST /memory/reset` – clear all in-memory items.
+
+The in-process memory store is automatically prepended as context for every `/llm` request, so recent uploads and notes are available to the LLM without any additional client logic. Memory resets whenever the container restarts.
+
 ## Using Docker
 
 1. **Build the image**:

@@ -10,6 +10,7 @@ dependencies = [
     "pandas",
     "pydantic",
     "google-generativeai",
+    "python-docx",
 ]
 
 [tool.setuptools.packages.find]
