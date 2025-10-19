@@ -60,6 +60,13 @@ class ChatSendRequest(BaseModel):
     message: str
 
 
+class MemoryAddRequest(BaseModel):
+    """Schema for adding free-form notes to memory."""
+
+    label: str
+    content: str
+
+
 @app.get("/")
 def read_root() -> dict[str, str]:
     """Basic health endpoint."""
