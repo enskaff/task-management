@@ -81,20 +81,20 @@ The service is configured to call the `models/gemini-2.0-flash-lite` model by de
 
 - **Managed hosting (e.g., Render, HuggingFace Spaces):** Add `GEMINI_API_KEY` as a protected environment variable in your service settings.
 
-### Example request
+### Example chat request
 
-After starting the server, call the `/llm` endpoint with a JSON body containing your prompt:
+After starting the server, send chat messages to the `/chat/send` endpoint. The backend automatically loads the system persona, your short session history, and the latest uploaded file (if any).
 
 ```bash
-curl -X POST http://127.0.0.1:8000/llm \
+curl -X POST http://127.0.0.1:8000/chat/send \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Summarize the benefits of using Gemini."}'
-# {"response": "...model output..."}
+  -d '{\"message\": \"Summarize the project status.\"}'
+# {"reply": "...model output...", "used_context": false}
 ```
 
-## Upload UI & in-memory context
+## Workspace & in-memory context
 
-- Visit [`/upload-ui`](http://127.0.0.1:8000/upload-ui) to access a minimal browser interface for uploading files, adding notes, previewing CSVs (first 50 rows), and resetting memory.
+- Visit [`/workspace`](http://127.0.0.1:8000/workspace) for a single-page experience that combines uploading and chatting.
 - Upload text sources directly to the `/upload` endpoint. Supported extensions are `.txt`, `.md`, `.csv`, and `.docx` with a maximum size of **1 MB**:
 
   ```bash
@@ -103,14 +103,14 @@ curl -X POST http://127.0.0.1:8000/llm \
     -F "file=@notes.csv"
   ```
 
-  CSV uploads return the extracted rows in the `csv_preview` field so you can quickly verify the ingested data.
-- Manage memory entries through the API:
+  CSV uploads return a `csv_preview` (first 50 rows). Text and DOCX uploads return a short `text_preview` so you can verify the ingested snippet.
+- The newest upload overwrites the previous context for that browser session. Chats will reference the stored text automatically without additional client logic. Memory resets whenever the container restarts.
 
-  - `GET /memory` – list stored items with labels and previews.
-  - `POST /memory/add_text` – add ad-hoc notes using `{ "label": "note:user", "content": "..." }` (content up to 10k characters).
-  - `POST /memory/reset` – clear all in-memory items.
+## Conversational memory
 
-The in-process memory store is automatically prepended as context for every `/llm` request, so recent uploads and notes are available to the LLM without any additional client logic. Memory resets whenever the container restarts.
+- Each browser session receives an `HttpOnly` cookie (`chat_session_id`) that keys a short rolling history (roughly the last 12 user/assistant messages).
+- History is not publicly exposed by the API; it is only used to improve continuity for the `/chat/send` endpoint. Uploading a new file keeps the history but replaces the contextual document snippet.
+- Both chat history and uploaded context live only in RAM and clear automatically when the container restarts or the process is redeployed.
 
 ## Using Docker
 
