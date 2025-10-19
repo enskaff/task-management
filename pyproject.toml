@@ -2,7 +2,7 @@
 name = "task-management"
 version = "0.1.0"
 description = "AI-based planning app scaffold"
-authors = [{name = "Task Management"}]
+authors = [{ name = "Task Management" }]
 requires-python = ">=3.12"
 dependencies = [
     "fastapi",
@@ -11,6 +11,7 @@ dependencies = [
     "pydantic",
     "google-generativeai",
     "python-docx",
+    "python-multipart",
 ]
 
 [tool.setuptools.packages.find]
